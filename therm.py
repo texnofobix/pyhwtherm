@@ -31,23 +31,7 @@ import stat
 
 AUTH="https://rs.alarmnet.com/TotalConnectComfort/"
 
-# Returns character or None on error. Error should WAIT then retry
-def getch(ttydev):
-    fd=None
-    old_settings=None
-    ch=None
-    try:
-        fd = open(ttydev,"r")
-        old_settings=termios.tcgetattr(fd)	
-        tty.setraw(fd)
-        ch = fd.read(1)
-    finally:
-         if (fd != None): 
-            termios.tcsetattr(fd, termios.TCSADRAIN, old_settings)
-         return ch
-
-
-def get_login(queryOnly=None,raiseHold=None,dontChange=None,runProgram=None):
+def get_login():
     
     print 
     print
@@ -87,7 +71,7 @@ def get_login(queryOnly=None,raiseHold=None,dontChange=None,runProgram=None):
     if ((location == None) or (r1.status != 302)):
         raise BaseException("Login fail" )
 
-
+def query():
     # Skip second query - just go directly to our device_id, rather than letting it
     # redirect us to it. 
 
@@ -129,7 +113,8 @@ def get_login(queryOnly=None,raiseHold=None,dontChange=None,runProgram=None):
     print "HoldUntil",j['latestData']['uiData']["TemporaryHoldUntilTime"]
     print "StatusCool",j['latestData']['uiData']["StatusCool"]
     print "StatusHeat",j['latestData']['uiData']["StatusHeat"]
-    
+
+def update():    
     if (queryOnly != None):
       return
 
