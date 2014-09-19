@@ -1,12 +1,19 @@
 import requests
 import datetime
 import time
+import json
 
 #currently queries only
 
 class hwtherm2(object):
     HOST = 'rs.alarmnet.com'
     BASEURL = "https://" + HOST + "/TotalConnectComfort"
+    FANAUTO = 0
+    FANON = 1
+    SYSTEMOFF = 2
+    SYSTEMHEAT = 1
+    SYSTEMCOOL = 3
+    SYSTEMAUTO = 4
 
     deviceid = 0
     valid_login = False
@@ -83,28 +90,85 @@ class hwtherm2(object):
 
         query_headers = dict(self.common_headers, **self.query_headers)
 
-        t = datetime.datetime.now()
-        utc_seconds = (time.mktime(t.timetuple()))
-        utc_seconds = int(utc_seconds*1000)
-
         r_query = self.session.get(
                 self.BASEURL + 
                 '/Device/CheckDataSession/' + 
                 str(self.deviceid) + 
                 '?_=' + 
-                str(utc_seconds),
+                self.getUTC(),
                 headers = query_headers)
         r_query.raise_for_status()
         return r_query.json()
 
-    def lower_perm(self)
+    def getUTC(self):
+        t = datetime.datetime.now()
+        utc_seconds = (time.mktime(t.timetuple()))
+        utc_seconds = int(utc_seconds*1000)
+        return str(utc_seconds)
+
+
+    def submit(self, send=True):
+        set_headers = dict(self.common_headers, **self.query_headers)
+        set_headers['Content-type'] = "application/json; charset=utf-8"
+        print set_headers
+
+        print "json"
+        print self.change_request
+        print json.dumps(self.change_request)
+
+        if send:
+            r=self.session.post(
+                    'https://rs.alarmnet.com/TotalConnectComfort/Device/SubmitControlScreenChanges',
+                    data=json.dumps(self.change_request),
+                    headers=set_headers)
+            r.raise_for_status()
+            print "submit text> ", r.text
+            print "submit json> ", r.json
+
+
+    def perm(self, heat=None, cool=None):
+        print "prep_perm"
+        prep = {
+                "SystemSwitch": None,
+                "HeatSetpoint": None,
+                "CoolSetpoint": None,
+                "HeatNextPeriod": None,
+                "CoolNextPeriod": None,
+                "StatusHeat": None,
+                "StatusCool": None,
+                "FanMode": None
+                }
+
+        if heat is not None:
+            prep["HeatSetpoint"] = int(heat)
+
+        if cool is not None:
+            prep["CoolSetpoint"] = int(cool)
+
+        print self.change_request.update(prep)
+        print "Value : %s" %  self.change_request
+        pass
+    
+    def temp(self,intime, cool=None, heat=None):
         """
-        https://rs.alarmnet.com/TotalConnectComfort/Device/SubmitControlScreenChanges
-        Content-Type: application/json; charset=utf-8
-        {"DeviceID":0,"SystemSwitch":null,"HeatSetpoint":72,"CoolSetpoint":null,"HeatNextPeriod":null,"CoolNextPeriod":null,"StatusHeat":null,"StatusCool":null,"FanMode":null}
-        json >> {success: 1}
+        Not finished
         """
-        print "Not implemented yet"
+        inputTime = time.strptime(intime, "%H:%M")
+        intime = inputTime.tm_hour * 15 + inputTime.tm_min
+        
+        preptemp = { "StatusHeat":1, "StatusCool":1 }
+        
+        if heat is not None:
+            preptemp["HeatSetpoint"] = int(heat)
+
+        if cool is not None:
+            preptemp["CoolSetpoint"] = int(cool)
+
+        preptemp["CoolNextPeriod"] = int(intime)
+        preptemp["HeatNextPeriod"] = int(intime)
+
+        print self.change_request.update(preptemp)
+        print "Value : %s" %  self.change_request
         pass
 
     def cancelHold(self):
