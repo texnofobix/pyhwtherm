@@ -6,6 +6,11 @@ import json
 #currently queries only
 
 class hwtherm2(object):
+    """
+    PyHWTherm is Python code to connect to the Honeywell Thermostat (currently
+    at https://rs.alarmnet.com/TotalConnectComfort) website to query and change
+    settings.
+    """
     HOST = 'rs.alarmnet.com'
     BASEURL = "https://" + HOST + "/TotalConnectComfort"
     FANAUTO = 0
@@ -45,6 +50,11 @@ class hwtherm2(object):
 
 
     def __init__(self, username, password, deviceid):
+        """
+        Create new object. Requires a valid Honeywell username (usually an
+        email address), password, and deviceid number. The deviceid can be found
+        after logging into the site for the respective device.
+        """
         self.deviceid = int(deviceid)
         self.session = requests.Session()
 
@@ -60,7 +70,8 @@ class hwtherm2(object):
 
     def login(self):
         """
-        Logins to site and establishes a valid session.
+        Logins to site and establishes a valid session using the stored
+        credentials.
         """
 
         r_login = self.session.post(
@@ -72,6 +83,7 @@ class hwtherm2(object):
 
         if r_login.text.find("Login was unsuccessful.") > 0:
             print "Login was unsuccessful."
+            raise
             return False
 
         r_login.raise_for_status()
@@ -110,24 +122,25 @@ class hwtherm2(object):
     def submit(self, send=True):
         set_headers = dict(self.common_headers, **self.query_headers)
         set_headers['Content-type'] = "application/json; charset=utf-8"
-        print set_headers
+        #print set_headers
 
-        print "json"
-        print self.change_request
-        print json.dumps(self.change_request)
+        #print "json"
+        #print self.change_request
+        #print json.dumps(self.change_request)
 
         if send:
             r=self.session.post(
-                    'https://rs.alarmnet.com/TotalConnectComfort/Device/SubmitControlScreenChanges',
+                    self.BASEURL + '/Device/SubmitControlScreenChanges',
                     data=json.dumps(self.change_request),
                     headers=set_headers)
             r.raise_for_status()
-            print "submit text> ", r.text
-            print "submit json> ", r.json
+
+            #Verify success
+            if json.loads(r.text)["success"] != 1:
+                raise "submit error"
 
 
-    def perm(self, heat=None, cool=None):
-        print "prep_perm"
+    def permHold(self, heat=None, cool=None):
         prep = {
                 "SystemSwitch": None,
                 "HeatSetpoint": None,
@@ -145,16 +158,15 @@ class hwtherm2(object):
         if cool is not None:
             prep["CoolSetpoint"] = int(cool)
 
-        print self.change_request.update(prep)
-        print "Value : %s" %  self.change_request
-        pass
+        self.change_request.update(prep)
+        #print "Value : %s" %  self.change_request
     
-    def temp(self,intime, cool=None, heat=None):
+    def tempHold(self,intime, cool=None, heat=None):
         """
         Not finished
         """
         inputTime = time.strptime(intime, "%H:%M")
-        intime = inputTime.tm_hour * 15 + inputTime.tm_min
+        intime = (inputTime.tm_hour * 60 + inputTime.tm_min) / 15
         
         preptemp = { "StatusHeat":1, "StatusCool":1 }
         
@@ -167,21 +179,24 @@ class hwtherm2(object):
         preptemp["CoolNextPeriod"] = int(intime)
         preptemp["HeatNextPeriod"] = int(intime)
 
-        print self.change_request.update(preptemp)
-        print "Value : %s" %  self.change_request
-        pass
+        self.change_request.update(preptemp)
+        #print "Value : %s" %  self.change_request
 
     def cancelHold(self):
         """
         set to ScheduleHeat/CoolSp in r_query.json()
         {"DeviceID":0,"SystemSwitch":null,"HeatSetpoint":70,"CoolSetpoint":78,"HeatNextPeriod":null,"CoolNextPeriod":null,"StatusHeat":0,"StatusCool":0,"FanMode":null}
         """
-        print "Not implemented yet"
-        pass
+        prepcancel = { "StatusHeat":0, "StatusCool":0,
+                "HeatNextPeriod":None,"CoolNextPeriod":None
+                }
+        self.change_request.update(prepcancel)
 
-    def setTemp(self):
-        """
-        {"DeviceID":0,"SystemSwitch":null,"HeatSetpoint":73,"CoolSetpoint":null,"HeatNextPeriod":30,"CoolNextPeriod":30,"StatusHeat":1,"StatusCool":1,"FanMode":null}
-        """
-        print "Not implemented yet"
-        pass 
+    def fan(self,mode):
+        if mode.upper() == 'ON':
+            self.change_request["FanMode"]=self.FANON
+        elif mode.upper() == 'AUTO': 
+            self.change_request["FanMode"]=self.FANAUTO
+        else:
+            return False
+        return self.change_request["FanMode"]

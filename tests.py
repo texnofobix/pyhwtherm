@@ -34,29 +34,40 @@ class TestHWTherm2(unittest.TestCase):
                 "DeviceID": self.deviceid
                 }
 
-        self.testtherm.perm()
+        self.testtherm.permHold()
         self.assertEqual(self.testtherm.change_request,prep)
         #self.assertEqual(self.testtherm['DeviceID'],self.deviceid)
 
     def testPermHeat71(self):
-        self.testtherm.perm(heat=71)
+        self.testtherm.permHold(heat=71)
         self.assertEqual(self.testtherm.change_request["HeatSetpoint"],71)
         self.assertEqual(self.testtherm.change_request["CoolSetpoint"],None)
 
     def testPermHeat10Cool50(self):
-        self.testtherm.perm(heat=10,cool=50)
+        self.testtherm.permHold(heat=10,cool=50)
         self.assertEqual(self.testtherm.change_request["HeatSetpoint"],10)
         self.assertEqual(self.testtherm.change_request["CoolSetpoint"],50)
 
     def testPermCool90(self):
-        self.testtherm.perm(cool=90)
+        self.testtherm.permHold(cool=90)
         self.assertEqual(self.testtherm.change_request["HeatSetpoint"],None)
         self.assertEqual(self.testtherm.change_request["CoolSetpoint"],90)
 
     def testTempTime(self):
-        self.testtherm.temp("01:30")
+        self.testtherm.tempHold("01:30")
         self.assertEqual(self.testtherm.change_request["CoolNextPeriod"],6)
         self.assertEqual(self.testtherm.change_request["HeatNextPeriod"],6)
+
+    def testFanOn(self):
+        self.testtherm.fan("on")
+        self.assertEqual(self.testtherm.change_request["FanMode"],1)
+
+    def testFanAuto(self):
+        self.testtherm.fan("auto")
+        self.assertEqual(self.testtherm.change_request["FanMode"],0)
+
+    def testFanBad(self):
+        self.assertEqual(self.testtherm.fan('durr'),False)
 
 
 
