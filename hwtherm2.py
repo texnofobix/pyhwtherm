@@ -3,8 +3,6 @@ import datetime
 import time
 import json
 
-#currently queries only
-
 class hwtherm2(object):
     """
     PyHWTherm is Python code to connect to the Honeywell Thermostat (currently
@@ -24,9 +22,11 @@ class hwtherm2(object):
     valid_login = False
 
     common_headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; rv:31.0) Gecko/20100101 Firefox/31.0',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; rv:31.0)' + 
+        'Gecko/20100101 Firefox/31.0',
         'Host': HOST,
-        'Accept': 'text/html,application/xhtml+xml,application/xml;q=0.9,*/*;q=0.8',
+        'Accept': 'text/html,application/xhtml+xml,' +
+        'application/xml;q=0.9,*/*;q=0.8',
         'Accept-Language': 'en-US,en;q=0.5',
         'Referer': BASEURL
         }
@@ -113,6 +113,7 @@ class hwtherm2(object):
         return r_query.json()
 
     def getUTC(self):
+        """ Creates UTC time string """
         t = datetime.datetime.now()
         utc_seconds = (time.mktime(t.timetuple()))
         utc_seconds = int(utc_seconds*1000)
@@ -120,6 +121,7 @@ class hwtherm2(object):
 
 
     def submit(self, send=True):
+        """ Submits change_request to site """
         set_headers = dict(self.common_headers, **self.query_headers)
         set_headers['Content-type'] = "application/json; charset=utf-8"
         #print set_headers
@@ -141,6 +143,10 @@ class hwtherm2(object):
 
 
     def permHold(self, heat=None, cool=None):
+        """
+        Sets the request to a permanent hold
+        """
+
         prep = {
                 "SystemSwitch": None,
                 "HeatSetpoint": None,
@@ -163,7 +169,7 @@ class hwtherm2(object):
     
     def tempHold(self,intime, cool=None, heat=None):
         """
-        Not finished
+        Sets the change request to a temporary hold
         """
         inputTime = time.strptime(intime, "%H:%M")
         intime = (inputTime.tm_hour * 60 + inputTime.tm_min) / 15
@@ -184,8 +190,13 @@ class hwtherm2(object):
 
     def cancelHold(self):
         """
-        set to ScheduleHeat/CoolSp in r_query.json()
-        {"DeviceID":0,"SystemSwitch":null,"HeatSetpoint":70,"CoolSetpoint":78,"HeatNextPeriod":null,"CoolNextPeriod":null,"StatusHeat":0,"StatusCool":0,"FanMode":null}
+        Sets change_request to cancel the holds
+
+        To Do: set to ScheduleHeat/CoolSp in r_query.json()
+            {"DeviceID":0,"SystemSwitch":null,
+            "HeatSetpoint":70,"CoolSetpoint":78,
+            "HeatNextPeriod":null,"CoolNextPeriod":null,
+            "StatusHeat":0,"StatusCool":0,"FanMode":null}
         """
         prepcancel = { "StatusHeat":0, "StatusCool":0,
                 "HeatNextPeriod":None,"CoolNextPeriod":None
@@ -200,3 +211,4 @@ class hwtherm2(object):
         else:
             return False
         return self.change_request["FanMode"]
+
