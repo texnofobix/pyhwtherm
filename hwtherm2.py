@@ -6,11 +6,11 @@ import json
 class hwtherm2(object):
     """
     PyHWTherm is Python code to connect to the Honeywell Thermostat (currently
-    at https://rs.alarmnet.com/TotalConnectComfort) website to query and change
-    settings.
+    at https://mytotalconnectcomfort.com/portal/TotalConnectComfort) website to 
+    query and change settings.
     """
-    HOST = 'rs.alarmnet.com'
-    BASEURL = "https://" + HOST + "/TotalConnectComfort"
+    HOST = 'mytotalconnectcomfort.com'
+    BASEURL = "https://" + HOST + "/portal"
     FANAUTO = 0
     FANON = 1
     SYSTEMOFF = 2
