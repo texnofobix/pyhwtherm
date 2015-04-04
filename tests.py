@@ -1,21 +1,21 @@
 import unittest
-import hwtherm2
+import pyhwtherm
 
-class TestHWTherm2(unittest.TestCase):
+class TestPyHWTherm(unittest.TestCase):
     
     def setUp(self):
         self.username = 'user'
         self.password = 'pass'
         self.deviceid = 123456
-        self.testtherm = hwtherm2.hwtherm2(self.username,self.password,self.deviceid)
+        self.testtherm = pyhwtherm.PyHWTherm(self.username,self.password,self.deviceid)
 
     def testCreateObject(self):
-        self.testtherm = hwtherm2.hwtherm2(
+        self.testtherm = pyhwtherm.PyHWTherm(
                 self.username,
                 self.password,
                 self.deviceid
                 )
-        self.assertIsInstance(self.testtherm,hwtherm2.hwtherm2)
+        self.assertIsInstance(self.testtherm,pyhwtherm.PyHWTherm)
 
 
     def testGetUTC(self):

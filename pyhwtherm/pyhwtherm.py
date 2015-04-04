@@ -3,7 +3,7 @@ import datetime
 import time
 import json
 
-class hwtherm2(object):
+class PyHWTherm(object):
     """
     PyHWTherm is Python code to connect to the Honeywell Thermostat (currently
     at https://mytotalconnectcomfort.com/portal/TotalConnectComfort) website to 
@@ -22,7 +22,7 @@ class hwtherm2(object):
     valid_login = False
 
     common_headers = {
-        'User-Agent': 'hwtherm2.py/0.0.1 (Windows NT 6.1; rv:31.0)',
+        'User-Agent': 'pyhwtherm/0.0.1',
         'Host': HOST,
         'Accept': 'application/json',
         'Accept-Language': 'en-US,en;q=0.5',

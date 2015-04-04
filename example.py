@@ -1,6 +1,6 @@
-from hwtherm2 import hwtherm2
+import pyhwtherm
 
-mytest = hwtherm2(
+mytest = pyhwtherm.PyHWTherm(
         username="someuser@example.com",
         password="mysecretpassword",
         deviceid=123456
@@ -16,3 +16,5 @@ mytest.submit()
 after = mytest.query()
 print "heat >>",before['latestData']['uiData']['HeatSetpoint'],"->",after['latestData']['uiData']['HeatSetpoint']
 print "cool >>",before['latestData']['uiData']['CoolSetpoint'],"->",after['latestData']['uiData']['CoolSetpoint']
+
+mytest.logout()
