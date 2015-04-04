@@ -22,11 +22,9 @@ class hwtherm2(object):
     valid_login = False
 
     common_headers = {
-        'User-Agent': 'Mozilla/5.0 (Windows NT 6.1; rv:31.0)' + 
-        'Gecko/20100101 Firefox/31.0',
+        'User-Agent': 'hwtherm2.py/0.0.1 (Windows NT 6.1; rv:31.0)',
         'Host': HOST,
-        'Accept': 'text/html,application/xhtml+xml,' +
-        'application/xml;q=0.9,*/*;q=0.8',
+        'Accept': 'application/json',
         'Accept-Language': 'en-US,en;q=0.5',
         'Referer': BASEURL
         }
@@ -74,19 +72,21 @@ class hwtherm2(object):
         credentials.
         """
 
-        r_login = self.session.post(
+	body = self._auth_requestparm
+	myheaders = self.common_headers
+
+        self._r = self.session.post(
                 self.BASEURL,
-                params = self._auth_requestparm,
+                data = self._auth_requestparm,
                 headers = self.common_headers
                 )
-        #print r_login.status_code,r_login.reason,r_login.text
 
-        if r_login.text.find("Login was unsuccessful.") > 0:
+        if self._r.text.find("Login was unsuccessful.") > 0:
             print "Login was unsuccessful."
             raise
             return False
 
-        r_login.raise_for_status()
+        self._r.raise_for_status()
 
         self.valid_login = True
 
@@ -102,15 +102,15 @@ class hwtherm2(object):
 
         query_headers = dict(self.common_headers, **self.query_headers)
 
-        r_query = self.session.get(
+        self._r = self.session.get(
                 self.BASEURL + 
                 '/Device/CheckDataSession/' + 
                 str(self.deviceid) + 
                 '?_=' + 
                 self.getUTC(),
                 headers = query_headers)
-        r_query.raise_for_status()
-        return r_query.json()
+        self._r.raise_for_status()
+        return self._r.json
 
     def getUTC(self):
         """ Creates UTC time string """
@@ -124,21 +124,16 @@ class hwtherm2(object):
         """ Submits change_request to site """
         set_headers = dict(self.common_headers, **self.query_headers)
         set_headers['Content-type'] = "application/json; charset=utf-8"
-        #print set_headers
-
-        #print "json"
-        #print self.change_request
-        #print json.dumps(self.change_request)
 
         if send:
-            r=self.session.post(
+            self._r=self.session.post(
                     self.BASEURL + '/Device/SubmitControlScreenChanges',
                     data=json.dumps(self.change_request),
                     headers=set_headers)
-            r.raise_for_status()
+            self._r.raise_for_status()
 
             #Verify success
-            if json.loads(r.text)["success"] != 1:
+            if json.loads(self._r.text)["success"] != 1:
                 raise "submit error"
 
 
@@ -186,7 +181,6 @@ class hwtherm2(object):
         preptemp["HeatNextPeriod"] = int(intime)
 
         self.change_request.update(preptemp)
-        #print "Value : %s" %  self.change_request
 
     def cancelHold(self):
         """
@@ -204,6 +198,9 @@ class hwtherm2(object):
         self.change_request.update(prepcancel)
 
     def fan(self,mode):
+	"""
+	Sets the request for fan as on or auto
+	"""
         if mode.upper() == 'ON':
             self.change_request["FanMode"]=self.FANON
         elif mode.upper() == 'AUTO': 
@@ -211,4 +208,13 @@ class hwtherm2(object):
         else:
             return False
         return self.change_request["FanMode"]
+
+    def logout(self):
+	"""
+	Logs out of the Honeywell site
+	"""
+	if (self.valid_login):
+            self._r = requests.get("https://mytotalconnectcomfort.com/portal/Account/LogOff")
+	    self.valid_login = False
+	    return self._r.ok
 
