@@ -1,4 +1,4 @@
-[![Build Status](https://travis-ci.org/texnofobix/pyhwtherm.svg?branch=master)](https://travis-ci.org/texnofobix/pyhwtherm)
+[![Build Status](https://travis-ci.org/texnofobix/pyhwtherm.svg?branch=master)](https://travis-ci.org/texnofobix/pyhwtherm) [![Coverage Status](https://coveralls.io/repos/texnofobix/pyhwtherm/badge.svg)](https://coveralls.io/r/texnofobix/pyhwtherm)
 pyhwtherm
 =========
 
