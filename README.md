@@ -4,7 +4,7 @@ pyhwtherm
 
 Original concept from http://www.bradgoodman.com/thermostat/
 
-pyhwtherm is a library to connect to the Honeywell Website to query status and update the thermostat.
+pyhwtherm is a library to connect to the Honeywell Website to query status and update the wifi thermostat.
 
 For usage see the example.py.
 
