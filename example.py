@@ -6,15 +6,17 @@ mytest = pyhwtherm.PyHWTherm(
         deviceid=123456
         )
 
-print mytest.login()
-print mytest.query()
-
-mytest.tempHold("09:00",cool=80,heat=72)
+print "login successful: ",mytest.login()
+print "Get thermostat data:", mytest.updateStatus()
+beforeChange = mytest.status
+print "Status: ", beforeChange
+mytest.tempHold("11:00",cool=78,heat=68)
 
 mytest.submit()
 
-after = mytest.query()
-print "heat >>",before['latestData']['uiData']['HeatSetpoint'],"->",after['latestData']['uiData']['HeatSetpoint']
-print "cool >>",before['latestData']['uiData']['CoolSetpoint'],"->",after['latestData']['uiData']['CoolSetpoint']
+print "Get thermostat data:", mytest.updateStatus()
+afterChange = mytest.status
+print "heat >>",beforeChange['latestData']['uiData']['HeatSetpoint'],"->",afterChange['latestData']['uiData']['HeatSetpoint']
+print "cool >>",beforeChange['latestData']['uiData']['CoolSetpoint'],"->",afterChange['latestData']['uiData']['CoolSetpoint']
 
-mytest.logout()
+print "Logout", mytest.logout()

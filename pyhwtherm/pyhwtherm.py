@@ -110,7 +110,18 @@ class PyHWTherm(object):
                 self.getUTC(),
                 headers = query_headers)
         self._r.raise_for_status()
-        return self._r.json
+       
+        return self._r.json()
+
+    def updateStatus(self):  
+        """
+        Query and set status.
+        """    
+        self.status = self.query()
+        if self.status['success']:
+            return True
+        else:
+            return False
 
     def getUTC(self):
         """ Creates UTC time string """
@@ -169,7 +180,7 @@ class PyHWTherm(object):
         inputTime = time.strptime(intime, "%H:%M")
         intime = (inputTime.tm_hour * 60 + inputTime.tm_min) / 15
         
-        preptemp = { "StatusHeat":1, "StatusCool":1 }
+        preptemp = { "StatusHeat": 1, "StatusCool": 1 }
         
         if heat is not None:
             preptemp["HeatSetpoint"] = int(heat)
@@ -192,8 +203,8 @@ class PyHWTherm(object):
             "HeatNextPeriod":null,"CoolNextPeriod":null,
             "StatusHeat":0,"StatusCool":0,"FanMode":null}
         """
-        prepcancel = { "StatusHeat":0, "StatusCool":0,
-                "HeatNextPeriod":None,"CoolNextPeriod":None
+        prepcancel = { "StatusHeat": 0, "StatusCool": 0,
+                "HeatNextPeriod": None,"CoolNextPeriod": None
                 }
         self.change_request.update(prepcancel)
 
@@ -210,11 +221,12 @@ class PyHWTherm(object):
         return self.change_request["FanMode"]
 
     def logout(self):
-	"""
-	Logs out of the Honeywell site
-	"""
-	if (self.valid_login):
-            self._r = requests.get("https://mytotalconnectcomfort.com/portal/Account/LogOff")
-	    self.valid_login = False
-	    return self._r.ok
+    	"""
+    	Logs out of the Honeywell site
+    	"""
+    	if (self.valid_login):
+                self._r = requests.get("https://mytotalconnectcomfort.com/portal/Account/LogOff")
+        self.valid_login = False
+        return self._r.ok
+    
 
