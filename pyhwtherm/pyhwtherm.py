@@ -209,9 +209,9 @@ class PyHWTherm(object):
         self.change_request.update(prepcancel)
 
     def fan(self,mode):
-	"""
-	Sets the request for fan as on or auto
-	"""
+    	"""
+    	Sets the request for fan as on or auto
+    	"""
         if mode.upper() == 'ON':
             self.change_request["FanMode"]=self.FANON
         elif mode.upper() == 'AUTO': 
@@ -219,13 +219,31 @@ class PyHWTherm(object):
         else:
             return False
         return self.change_request["FanMode"]
+    
+    def systemState(self,mode):
+        """
+        Sets the System Switch state
+        """
+        if mode.upper() == 'AUTO':
+            self.change_request["SystemSwitch"]=self.SYSTEMAUTO
+        elif mode.upper() == 'COOL':
+            self.change_request["SystemSwitch"]=self.SYSTEMCOOL
+        elif mode.upper() == 'HEAT':
+            self.change_request["SystemSwitch"]=self.SYSTEMHEAT
+        elif mode.upper() == 'OFF':
+            self.change_request["SystemSwitch"]=self.SYSTEMOFF
+        else:
+            return False
+        return self.change_request["SystemSwitch"]
+        
+            
 
     def logout(self):
     	"""
     	Logs out of the Honeywell site
     	"""
     	if (self.valid_login):
-                self._r = requests.get("https://mytotalconnectcomfort.com/portal/Account/LogOff")
+                self._r = requests.get(self.BASEURL + "/Account/LogOff")
         self.valid_login = False
         return self._r.ok
     
