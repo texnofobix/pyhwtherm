@@ -1,15 +1,14 @@
 import unittest
-from mock import Mock
-from pyhwtherm import PyHWTherm
+
+from pyhwtherm import *
 
 class TestPyHWTherm(unittest.TestCase):
     
     def setUp(self):
         self.username = 'user'
-        self.password = 'pass'
-        self.deviceid = 123456
+        self.password = 'pw'
+        self.deviceid = 12345
         self.testtherm = PyHWTherm(self.username,self.password,self.deviceid)
-        
 
     def testCreateObject(self):
         self.testtherm = PyHWTherm(
@@ -19,9 +18,8 @@ class TestPyHWTherm(unittest.TestCase):
                 )
         self.assertIsInstance(self.testtherm,PyHWTherm)
 
-
     def testGetUTC(self):
-        self.assertIsInstance(self.testtherm.getUTC(),str)
+        self.assertIsInstance(self.testtherm.getutv(),str)
         
     def testPermBlank(self):
         prep = {
@@ -36,59 +34,101 @@ class TestPyHWTherm(unittest.TestCase):
                 "DeviceID": self.deviceid
                 }
 
-        self.testtherm.permHold()
+        prep["SystemSwitch"],None
+        prep["HeatSetpoint"],None
+        prep["CoolSetpoint"],None
+        prep["HeatNextPeriod"],None
+        prep["CoolNextPeriod"],None
+        prep["StatusHeat"],None
+        prep["StatusCool"],None
+        prep["FanMode"],None
+
+        self.testtherm.change_request.update(prep)
+
         self.assertEqual(self.testtherm.change_request,prep)
         #self.assertEqual(self.testtherm['DeviceID'],self.deviceid)
+ 
+    
+    def testHoldPerm(self):
+        self.testtherm.temp(holdmode=Hold.PERMANENT)
+        self.assertEqual(self.testtherm.change_request["StatusHeat"],Hold.PERMANENT)
+        self.assertEqual(self.testtherm.change_request["StatusCool"],Hold.PERMANENT)
 
-    def testPermHeat71(self):
-        self.testtherm.permHold(heat=71)
-        self.assertEqual(self.testtherm.change_request["HeatSetpoint"],71)
-        self.assertEqual(self.testtherm.change_request["CoolSetpoint"],None)
+    def testHoldTemp(self):
+        self.testtherm.temp(holdmode=Hold.TEMPORARY)
+        self.assertEqual(self.testtherm.change_request["StatusHeat"],Hold.TEMPORARY)
+        self.assertEqual(self.testtherm.change_request["StatusCool"],Hold.TEMPORARY)
 
-    def testPermHeat10Cool50(self):
-        self.testtherm.permHold(heat=10,cool=50)
+    def testHoldPermHeat68Cool72(self):
+        self.testtherm.temp(Hold.PERMANENT, cool=72, heat=68)
+        self.assertEqual(self.testtherm.change_request["StatusHeat"],Hold.PERMANENT)
+        self.assertEqual(self.testtherm.change_request["StatusCool"],Hold.PERMANENT)
+        self.assertEqual(self.testtherm.change_request["HeatSetpoint"],68)
+        self.assertEqual(self.testtherm.change_request["CoolSetpoint"],72)
+
+    def testTempPermHeat68Cool72(self):
+        self.testtherm.temp(holdmode=Hold.PERMANENT, cool=72, heat=68, holdtime="1:30")
+        self.assertEqual(self.testtherm.change_request["StatusHeat"],Hold.PERMANENT)
+        self.assertEqual(self.testtherm.change_request["StatusCool"],Hold.PERMANENT)
+        self.assertEqual(self.testtherm.change_request["HeatSetpoint"],68)
+        self.assertEqual(self.testtherm.change_request["CoolSetpoint"],72)
+        self.assertEqual(self.testtherm.change_request["CoolNextPeriod"],6)
+        self.assertEqual(self.testtherm.change_request["HeatNextPeriod"],6)
+
+    def testHoldPerm(self):
+        self.testtherm.temp(holdmode=Hold.PERMANENT)
+        self.assertEqual(self.testtherm.change_request["StatusHeat"],Hold.PERMANENT)
+        self.assertEqual(self.testtherm.change_request["StatusCool"],Hold.PERMANENT)
+
+    def testTempHeat10Cool50(self):
+        self.testtherm.temp(cool=50, heat=10)
         self.assertEqual(self.testtherm.change_request["HeatSetpoint"],10)
         self.assertEqual(self.testtherm.change_request["CoolSetpoint"],50)
 
-    def testPermCool90(self):
-        self.testtherm.permHold(cool=90)
+    def testTempHeat68(self):
+        self.testtherm.temp(heat=68)
+        self.assertEqual(self.testtherm.change_request["HeatSetpoint"],68)
+        self.assertEqual(self.testtherm.change_request["CoolSetpoint"],None)
+
+    def testTempCool90(self):
+        self.testtherm.temp(cool=90)
         self.assertEqual(self.testtherm.change_request["HeatSetpoint"],None)
         self.assertEqual(self.testtherm.change_request["CoolSetpoint"],90)
 
     def testTempTime(self):
-        self.testtherm.tempHold("01:30")
+        self.testtherm.temp(holdtime="01:30")
         self.assertEqual(self.testtherm.change_request["CoolNextPeriod"],6)
         self.assertEqual(self.testtherm.change_request["HeatNextPeriod"],6)
 
     def testFanOn(self):
-        self.testtherm.fan("on")
-        self.assertEqual(self.testtherm.change_request["FanMode"],PyHWTherm.FANON)
+        self.testtherm.fan(Fan.ON)
+        self.assertEqual(self.testtherm.change_request["FanMode"],Fan.ON)
 
     def testFanAuto(self):
-        self.testtherm.fan("auto")
-        self.assertEqual(self.testtherm.change_request["FanMode"],PyHWTherm.FANAUTO)
+        self.testtherm.fan(Fan.AUTO)
+        self.assertEqual(self.testtherm.change_request["FanMode"],Fan.AUTO)
 
     def testFanBad(self):
-        self.assertEqual(self.testtherm.fan('durr'),False)
+        self.assertEqual(self.testtherm.fan('bad'),False)
         
     def testSystemAuto(self):
-        self.testtherm.systemState("auto")
-        self.assertEqual(self.testtherm.change_request["SystemSwitch"],PyHWTherm.SYSTEMAUTO)
+        self.testtherm.system(System.AUTO)
+        self.assertEqual(self.testtherm.change_request["SystemSwitch"],System.AUTO)
     
     def testSystemCool(self):
-        self.testtherm.systemState("cool")
-        self.assertEqual(self.testtherm.change_request["SystemSwitch"],PyHWTherm.SYSTEMCOOL)
+        self.testtherm.system(System.COOL)
+        self.assertEqual(self.testtherm.change_request["SystemSwitch"],System.COOL)
         
     def testSystemHeat(self):
-        self.testtherm.systemState("heat")
-        self.assertEqual(self.testtherm.change_request["SystemSwitch"],PyHWTherm.SYSTEMHEAT)
+        self.testtherm.system(System.HEAT)
+        self.assertEqual(self.testtherm.change_request["SystemSwitch"],System.HEAT)
         
     def testSystemOff(self):
-        self.testtherm.systemState("off")
-        self.assertEqual(self.testtherm.change_request["SystemSwitch"],PyHWTherm.SYSTEMOFF)
+        self.testtherm.system(System.OFF)
+        self.assertEqual(self.testtherm.change_request["SystemSwitch"],System.OFF)
         
     def testSystemBad(self):
-        self.assertEqual(self.testtherm.systemState('durr'),False)
+        self.assertEqual(self.testtherm.system('bad'),False)
 
 
 

@@ -1,38 +1,73 @@
-import requests
+"""
+PyHWTherm is Python code module to connect to the Honeywell Thermostat (currently
+at https://mytotalconnectcomfort.com/portal/TotalConnectComfort) website to 
+query and change settings.
+Based on:
+Original concept from http://www.bradgoodman.com/thermostat/
+"""
+
 import datetime
 import time
 import json
+import requests
+
+
+class Fan:
+    def __init__(self):
+        pass
+
+    mode = ['Auto', 'On', 'Circulate', 'Follow Schedule']
+    AUTO = 0
+    ON = 1
+    CIRCULATE = 2
+    FOLLOWSCHEDULE = 3
+
+
+class Hold:
+    def __init__(self):
+        pass
+
+    mode = ['Follow Schedule', 'Temporary Hold', 'Permanent Hold']
+    FOLLOWSCHEDULE = 0
+    TEMPORARY = 1
+    PERMANENT = 2
+
+
+class System:
+    def __init__(self):
+        pass
+
+    mode = ['?', 'Heat', 'Off', 'Cool', 'Auto', '?']
+    OFF = 2
+    HEAT = 1
+    COOL = 3
+    AUTO = 4
+
 
 class PyHWTherm(object):
-    """
-    PyHWTherm is Python code to connect to the Honeywell Thermostat (currently
-    at https://mytotalconnectcomfort.com/portal/TotalConnectComfort) website to 
-    query and change settings.
-    """
-    HOST = 'mytotalconnectcomfort.com'
-    BASEURL = "https://" + HOST + "/portal"
-    FANAUTO = 0
-    FANON = 1
-    SYSTEMOFF = 2
-    SYSTEMHEAT = 1
-    SYSTEMCOOL = 3
-    SYSTEMAUTO = 4
+    VERSION = 2.0
 
+    # Set DEBUG to 1 to show debug output, > 1 to show verbose debug
+    DEBUG = 0
     deviceid = 0
     valid_login = False
 
+    HOST = 'mytotalconnectcomfort.com'
+    BASEURL = "https://" + HOST + "/portal"
+
     common_headers = {
-        'User-Agent': 'pyhwtherm/0.0.1',
+        'User-Agent': 'PyHWTherm/'+str(VERSION),
         'Host': HOST,
         'Accept': 'application/json',
         'Accept-Language': 'en-US,en;q=0.5',
         'Referer': BASEURL
-        }
+    }
 
     query_headers = {
         "X-Requested-With": "XMLHttpRequest",
         'Accept': '*/*',
-        }
+        'Referer': BASEURL
+    }
 
     change_request = {
         "DeviceID": deviceid,
@@ -44,8 +79,7 @@ class PyHWTherm(object):
         "StatusHeat": None,
         "StatusCool": None,
         "FanMode": None
-        }
-
+    }
 
     def __init__(self, username, password, deviceid):
         """
@@ -56,39 +90,57 @@ class PyHWTherm(object):
         self.deviceid = int(deviceid)
         self.session = requests.Session()
 
-        self._auth_requestparm = {
-                'timeOffset': 240, 
-                'RememberMe': 'false',
-                'UserName': username,
-                'Password': password,
-            }
+        self.auth_requestparm = {
+            'timeOffset': 240,
+            'RememberMe': 'false',
+            'UserName': username,
+            'Password': password,
+        }
 
         self.query_headers["Referer"] = self.BASEURL + "/Device/Control/" + str(deviceid)
         self.change_request["DeviceID"] = int(deviceid)
+        self.status = ""
+
+    def version(self):
+        return self.VERSION
 
     def login(self):
         """
-        Logins to site and establishes a valid session using the stored
+        Login to site and establishes a valid session using the stored
         credentials.
         """
 
-	body = self._auth_requestparm
-	myheaders = self.common_headers
+        if self.DEBUG > 0:
+            print (">login()")
 
-        self._r = self.session.post(
-                self.BASEURL,
-                data = self._auth_requestparm,
-                headers = self.common_headers
-                )
+        _auth = self.auth_requestparm
+        _headers = self.common_headers
 
-        if self._r.text.find("Login was unsuccessful.") > 0:
-            print "Login was unsuccessful."
-            raise
+        if self.DEBUG > 0:
+            print ("?self.BASEURL: ", self.BASEURL)
+            print ("?_auth: ", _auth)
+            print ("?_headers: ", _headers)
+
+        response = self.session.post(
+            self.BASEURL,
+            data=_auth,
+            headers=_headers
+        )
+
+        if self.DEBUG > 1:
+            print (response.text)
+
+        if response.text.find("Login was unsuccessful.") > 0:
+            if self.DEBUG > 0:
+                print ("<login() = False")
             return False
 
-        self._r.raise_for_status()
+        response.raise_for_status()
 
         self.valid_login = True
+
+        if self.DEBUG > 0:
+            print ("<login() = True")
 
         return True
 
@@ -96,155 +148,203 @@ class PyHWTherm(object):
         """
         Queries the site and returns thermostat data in dict
         """
+        if self.DEBUG > 0:
+            print (">query")
+
         if not self.valid_login:
-            print "Not logged in!"
+            if self.DEBUG > 0:
+                print (">query() = False")
             return False
 
         query_headers = dict(self.common_headers, **self.query_headers)
+        baseurl = self.BASEURL + '/Device/CheckDataSession/' + str(self.deviceid) + '?_=' + self.getutv()
 
-        self._r = self.session.get(
-                self.BASEURL + 
-                '/Device/CheckDataSession/' + 
-                str(self.deviceid) + 
-                '?_=' + 
-                self.getUTC(),
-                headers = query_headers)
-        self._r.raise_for_status()
-       
-        return self._r.json()
+        if self.DEBUG > 0:
+            print ("?baseurl: ", baseurl)
+            print ("?query_headers: ", query_headers)
 
-    def updateStatus(self):  
+        query_req = self.session.get(
+            baseurl,
+            headers=query_headers)
+
+        query_req.raise_for_status()
+
+        if self.DEBUG > 0:
+            print ("?resp: ", query_req.json())
+            print ("<query()")
+
+        return query_req.json()
+
+    def updatestatus(self):
         """
         Query and set status.
-        """    
+        """
         self.status = self.query()
         if self.status['success']:
             return True
         else:
             return False
 
-    def getUTC(self):
+    # noinspection PyMethodMayBeStatic
+    def getutv(self):
         """ Creates UTC time string """
         t = datetime.datetime.now()
         utc_seconds = (time.mktime(t.timetuple()))
-        utc_seconds = int(utc_seconds*1000)
+        utc_seconds = int(utc_seconds * 1000)
         return str(utc_seconds)
-
 
     def submit(self, send=True):
         """ Submits change_request to site """
+        if self.DEBUG > 0:
+            print (">submit")
+
         set_headers = dict(self.common_headers, **self.query_headers)
         set_headers['Content-type'] = "application/json; charset=utf-8"
 
         if send:
-            self._r=self.session.post(
-                    self.BASEURL + '/Device/SubmitControlScreenChanges',
-                    data=json.dumps(self.change_request),
-                    headers=set_headers)
-            self._r.raise_for_status()
 
-            #Verify success
-            if json.loads(self._r.text)["success"] != 1:
-                raise "submit error"
+            baseurl = self.BASEURL + '/Device/SubmitControlScreenChanges'
+            reqdata = json.dumps(self.change_request)
+            if self.DEBUG > 0:
+                print ("?baseurl: ", baseurl)
+                print ("?reqdata: ", reqdata)
+                print ("?set_headers: ", set_headers)
 
+            response = self.session.post(
+                baseurl,
+                data=reqdata,
+                headers=set_headers)
+            response.raise_for_status()
 
+            # Verify success
+            if json.loads(response.text)["success"] != 1:
+                if self.DEBUG > 0:
+                    print ("<submit() = False")
+                raise Exception("submit error")
+        if self.DEBUG > 0:
+            print ("<submit() = true")
+
+    # deprecated, use temp and hold
+    # noinspection PyPep8Naming
     def permHold(self, heat=None, cool=None):
-        """
-        Sets the request to a permanent hold
-        """
+        self.temp(holdmode=Hold.PERMANENT, cool=cool, heat=heat)
 
-        prep = {
-                "SystemSwitch": None,
-                "HeatSetpoint": None,
-                "CoolSetpoint": None,
-                "HeatNextPeriod": None,
-                "CoolNextPeriod": None,
-                "StatusHeat": None,
-                "StatusCool": None,
-                "FanMode": None
-                }
+    # deprecated, use temp and hold
+    # noinspection PyPep8Naming
+    def tempHold(self, intime, cool=None, heat=None):
+        self.temp(holdmode=Hold.TEMPORARY, holdtime=intime, cool=cool, heat=heat)
+
+    def hold(self, holdmode=None, holdtime=None):
+
+        if holdmode is Hold.FOLLOWSCHEDULE:
+            self.change_request["StatusHeat"] = int(Hold.FOLLOWSCHEDULE)
+            self.change_request["StatusCool"] = int(Hold.FOLLOWSCHEDULE)
+            return 0
+        else:
+            if holdmode is Hold.TEMPORARY:
+                self.change_request["StatusHeat"] = int(Hold.TEMPORARY)
+                self.change_request["StatusCool"] = int(Hold.TEMPORARY)
+            else:
+                if holdmode is Hold.PERMANENT:
+                    self.change_request["StatusHeat"] = int(Hold.PERMANENT)
+                    self.change_request["StatusCool"] = int(Hold.PERMANENT)
+                else:
+                    self.change_request["StatusHeat"] = None
+                    self.change_request["StatusCool"] = None
+
+        if holdtime is not None:
+            if holdtime is 0:
+                self.change_request["StatusHeat"] = int(Hold.PERMANENT)
+                self.change_request["StatusCool"] = int(Hold.PERMANENT)
+                self.change_request["HeatNextPeriod"] = 0
+                self.change_request["CoolNextPeriod"] = 0
+            else:
+                if ":" in str(holdtime):
+                    inputtime = time.strptime(holdtime, "%H:%M")
+                    stop_time = (inputtime.tm_hour * 60 + inputtime.tm_min) / 15
+                    self.change_request["CoolNextPeriod"] = stop_time
+                    self.change_request["HeatNextPeriod"] = stop_time
+                else:
+                    t = datetime.datetime.now()
+                    stop_time = ((t.hour + int(holdtime)) % 24) * 60 + t.minute
+                    stop_time /= 15
+                    self.change_request["CoolNextPeriod"] = stop_time
+                    self.change_request["HeatNextPeriod"] = stop_time
+        else:
+            self.change_request["HeatNextPeriod"] = None
+            self.change_request["CoolNextPeriod"] = None
+
+    def temp(self, holdmode=None, holdtime=None, cool=None, heat=None):
+
+        self.hold(holdmode, holdtime)
 
         if heat is not None:
-            prep["HeatSetpoint"] = int(heat)
+            self.change_request["HeatSetpoint"] = int(heat)
+        else:
+            self.change_request["HeatSetpoint"] = None
 
         if cool is not None:
-            prep["CoolSetpoint"] = int(cool)
+            self.change_request["CoolSetpoint"] = int(cool)
+        else:
+            self.change_request["CoolSetpoint"] = None
 
-        self.change_request.update(prep)
-        #print "Value : %s" %  self.change_request
-    
-    def tempHold(self,intime, cool=None, heat=None):
+    def fan(self, mode=None):
         """
-        Sets the change request to a temporary hold
+        Sets the request for fan as on or auto
         """
-        inputTime = time.strptime(intime, "%H:%M")
-        intime = (inputTime.tm_hour * 60 + inputTime.tm_min) / 15
-        
-        preptemp = { "StatusHeat": 1, "StatusCool": 1 }
-        
-        if heat is not None:
-            preptemp["HeatSetpoint"] = int(heat)
-
-        if cool is not None:
-            preptemp["CoolSetpoint"] = int(cool)
-
-        preptemp["CoolNextPeriod"] = int(intime)
-        preptemp["HeatNextPeriod"] = int(intime)
-
-        self.change_request.update(preptemp)
-
-    def cancelHold(self):
-        """
-        Sets change_request to cancel the holds
-
-        To Do: set to ScheduleHeat/CoolSp in r_query.json()
-            {"DeviceID":0,"SystemSwitch":null,
-            "HeatSetpoint":70,"CoolSetpoint":78,
-            "HeatNextPeriod":null,"CoolNextPeriod":null,
-            "StatusHeat":0,"StatusCool":0,"FanMode":null}
-        """
-        prepcancel = { "StatusHeat": 0, "StatusCool": 0,
-                "HeatNextPeriod": None,"CoolNextPeriod": None
-                }
-        self.change_request.update(prepcancel)
-
-    def fan(self,mode):
-    	"""
-    	Sets the request for fan as on or auto
-    	"""
-        if mode.upper() == 'ON':
-            self.change_request["FanMode"]=self.FANON
-        elif mode.upper() == 'AUTO': 
-            self.change_request["FanMode"]=self.FANAUTO
+        if mode == Fan.ON:
+            self.change_request["FanMode"] = Fan.ON
+        elif mode == Fan.AUTO:
+            self.change_request["FanMode"] = Fan.AUTO
+        elif mode == Fan.CIRCULATE:
+            self.change_request["FanMode"] = Fan.CIRCULATE
+        elif mode == Fan.FOLLOWSCHEDULE:
+            self.change_request["FanMode"] = Fan.FOLLOWSCHEDULE
         else:
             return False
+
         return self.change_request["FanMode"]
-    
-    def systemState(self,mode):
+
+    def system(self, mode=None):
         """
         Sets the System Switch state
         """
-        if mode.upper() == 'AUTO':
-            self.change_request["SystemSwitch"]=self.SYSTEMAUTO
-        elif mode.upper() == 'COOL':
-            self.change_request["SystemSwitch"]=self.SYSTEMCOOL
-        elif mode.upper() == 'HEAT':
-            self.change_request["SystemSwitch"]=self.SYSTEMHEAT
-        elif mode.upper() == 'OFF':
-            self.change_request["SystemSwitch"]=self.SYSTEMOFF
+        if mode == System.AUTO:
+            self.change_request["SystemSwitch"] = System.AUTO
+        elif mode == System.COOL:
+            self.change_request["SystemSwitch"] = System.COOL
+        elif mode == System.HEAT:
+            self.change_request["SystemSwitch"] = System.HEAT
+        elif mode == System.OFF:
+            self.change_request["SystemSwitch"] = System.OFF
         else:
             return False
         return self.change_request["SystemSwitch"]
-        
-            
 
     def logout(self):
-    	"""
-    	Logs out of the Honeywell site
-    	"""
-    	if (self.valid_login):
-                self._r = requests.get(self.BASEURL + "/Account/LogOff")
+        """
+        Logs out of the Honeywell site
+        """
+        response = ""
+        if self.DEBUG > 0:
+            print (">logout()")
+        if self.valid_login:
+            response = requests.get(self.BASEURL + "/Account/LogOff")
         self.valid_login = False
-        return self._r.ok
-    
+        if self.DEBUG > 0:
+            print ("<logout()")
+        return response
 
+    # noinspection PyMethodMayBeStatic
+    def period2time(self, period):
+        """
+        Translate 15 min periods sense midnight to time
+        """
+        hour = str(int(period * 15 / 60))
+        if int(hour) > 12:
+            hour = str(int(hour) - 12)
+            ampm = "pm"
+        else:
+            ampm = "am"
+        mintime = str(int(period) * 15 % 60).zfill(2)
+        return hour + ":" + mintime + ampm

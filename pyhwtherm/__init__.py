@@ -1,1 +1,1 @@
-from pyhwtherm import PyHWTherm
+from pyhwtherm import *
